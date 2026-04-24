@@ -1,0 +1,25 @@
+# Database
+psycopg2-binary>=2.9.9
+python-dotenv>=1.0.0
+
+# Monday.com API
+requests>=2.31.0
+
+# LangGraph + OpenAI
+langgraph>=0.2.0
+langchain-openai>=0.2.0
+langchain-core>=0.3.0
+openai>=1.0.0
+
+# Telegram bot
+python-telegram-bot>=21.0
+
+# Gmail
+google-api-python-client>=2.0.0
+google-auth-oauthlib>=1.0.0
+
+# Logging
+structlog>=24.0.0
+
+# Persistent memory
+langgraph-checkpoint-postgres>=3.0.0

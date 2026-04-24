@@ -1,0 +1,20 @@
+# Secrets
+.env
+creds.json
+token_gmail*.pkl
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Data
+whatsapp/
+logs/
+
+# IDE
+.vscode/
+.claude/
+
+# OS
+.DS_Store
