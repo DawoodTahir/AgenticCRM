@@ -113,14 +113,19 @@ def tool_lookup_person(name: str = None, email: str = None, phone: str = None) -
             lead = get_lead_with_notes(conn, contact["monday_lead_id"])
             if lead:
                 result["monday_lead"] = {
-                    "client_status": lead.get("client_status"),
-                    "follow_up_status": lead.get("follow_up_status"),
-                    "mood": lead.get("mood"),
-                    "value_level": lead.get("value_level"),
-                    "sentiment": lead.get("sentiment"),
-                    "position": lead.get("position"),
-                    "due_date": lead.get("due_date"),
+                    "pipeline_stage": lead.get("monday_group_name"),
+                    "status": lead.get("status"),
+                    "lead_score": lead.get("lead_score"),
+                    "sequence_status": lead.get("sequence_status"),
+                    "sba": lead.get("sba"),
+                    "cim_sent": lead.get("cim_sent"),
+                    "is_broker": lead.get("is_broker"),
+                    "proof_of_funds": lead.get("proof_of_funds"),
+                    "industry_tags": lead.get("industry_tags"),
+                    "listing_number": lead.get("listing_number"),
                     "assigned_to": lead.get("assigned_to_name"),
+                    "start_date": lead.get("start_date"),
+                    "sequence_start_date": lead.get("sequence_start_date"),
                     "notes": lead.get("notes", []),
                 }
 
@@ -149,9 +154,9 @@ def tool_lookup_person(name: str = None, email: str = None, phone: str = None) -
 @tool
 def tool_get_leads_by_status(status: str) -> str:
     """
-    Get all leads with a specific client status.
-    Valid statuses in this board: 'Potential Client', 'Client'.
-    Use this to see all leads at a particular stage.
+    Get all leads with a specific status.
+    Status is a column on the Monday board — possible values depend on what the team sets.
+    Use this to see all leads at a particular status.
     """
     conn = get_connection()
     try:
@@ -205,56 +210,81 @@ def tool_get_pipeline_summary() -> str:
 
 
 @tool
-def tool_get_leads_by_follow_up_status(status: str) -> str:
+def tool_get_leads_by_sequence_status(status: str) -> str:
     """
-    Filter leads by their follow-up status.
-    Valid values: 'Cool', 'LATE', 'IN PROGRESS'.
-    Use 'LATE' to find overdue leads that need immediate attention.
+    Filter leads by their sequence status (outreach progress).
+    Use this to find leads at a specific stage of the email/outreach sequence.
     """
     conn = get_connection()
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT id, name, email, company, client_status,
-                       follow_up_status, due_date, assigned_to_name
+                SELECT id, name, email, company, status,
+                       sequence_status, lead_score, assigned_to_name
                 FROM leads
-                WHERE LOWER(follow_up_status) = LOWER(%s)
-                ORDER BY due_date ASC NULLS LAST
+                WHERE LOWER(sequence_status) = LOWER(%s)
+                ORDER BY monday_updated_at DESC
                 LIMIT 50
                 """,
                 (status,)
             )
-            cols = [d[0] for d in cur.description]
-            rows = [dict(zip(cols, row)) for row in cur.fetchall()]
-        return _serialize(rows) if rows else f"No leads with follow-up status '{status}'."
+            rows = [dict(r) for r in cur.fetchall()]
+        return _serialize(rows) if rows else f"No leads with sequence status '{status}'."
     finally:
         conn.close()
 
 
 @tool
-def tool_get_leads_by_mood(mood: str) -> str:
+def tool_get_leads_by_lead_score(score: str) -> str:
     """
-    Get leads filtered by their mood/relationship status.
-    Valid values: 'Happy', 'fine', 'Doesnt know us', 'Needs Some...', 'Neutral', 'Positive'.
-    Use this to find warm leads (Happy) or cold leads (Doesnt know us).
+    Filter leads by their lead score.
+    Use this to find high-priority or low-priority leads based on their score.
     """
     conn = get_connection()
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT id, name, email, company, client_status, mood, assigned_to_name
+                SELECT id, name, email, company, status,
+                       lead_score, sequence_status, assigned_to_name
                 FROM leads
-                WHERE mood ILIKE %s
+                WHERE LOWER(lead_score) = LOWER(%s)
                 ORDER BY monday_updated_at DESC
                 LIMIT 50
                 """,
-                (f"%{mood}%",)
+                (score,)
             )
-            cols = [d[0] for d in cur.description]
-            rows = [dict(zip(cols, row)) for row in cur.fetchall()]
-        return _serialize(rows) if rows else f"No leads found with mood '{mood}'."
+            rows = [dict(r) for r in cur.fetchall()]
+        return _serialize(rows) if rows else f"No leads found with lead score '{score}'."
+    finally:
+        conn.close()
+
+
+@tool
+def tool_get_leads_by_pipeline_stage(stage: str) -> str:
+    """
+    Filter leads by their pipeline stage (Monday board group).
+    Stages: New Leads, NDA Sent, NDA Signed, CIM Sent, Successful Call,
+    Offer/LOI, Under Contract, Working, Warm, Cool, Dead, Brokers.
+    Use this to see all leads at a specific point in the sales funnel.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id, name, email, company, status,
+                       lead_score, sequence_status, assigned_to_name
+                FROM leads
+                WHERE LOWER(monday_group_name) = LOWER(%s)
+                ORDER BY monday_updated_at DESC
+                LIMIT 50
+                """,
+                (stage,)
+            )
+            rows = [dict(r) for r in cur.fetchall()]
+        return _serialize(rows) if rows else f"No leads found in pipeline stage '{stage}'."
     finally:
         conn.close()
 
@@ -266,6 +296,7 @@ ALL_TOOLS = [
     tool_get_stale_leads,
     tool_get_lead_details,
     tool_get_pipeline_summary,
-    tool_get_leads_by_follow_up_status,
-    tool_get_leads_by_mood,
+    tool_get_leads_by_sequence_status,
+    tool_get_leads_by_lead_score,
+    tool_get_leads_by_pipeline_stage,
 ]

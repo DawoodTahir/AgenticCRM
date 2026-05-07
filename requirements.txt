@@ -12,7 +12,7 @@ langchain-core>=0.3.0
 openai>=1.0.0
 
 # Telegram bot
-python-telegram-bot>=21.0
+python-telegram-bot[webhooks]>=21.0
 
 # Gmail
 google-api-python-client>=2.0.0

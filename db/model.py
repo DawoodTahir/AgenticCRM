@@ -13,7 +13,14 @@ log = get_logger("db")
 
 # ── Connection ────────────────────────────────────────────────
 def get_connection():
-    return psycopg2.connect(os.environ["DATABASE_URL"])
+    db_url = os.environ.get("DATABASE_URL")
+    if not db_url:
+        raise RuntimeError("DATABASE_URL environment variable is not set")
+    try:
+        return psycopg2.connect(db_url)
+    except psycopg2.OperationalError as e:
+        log.error("db_connection_failed", error=str(e))
+        raise RuntimeError(f"Cannot connect to database: {e}") from e
 
 
 # ── Write: leads ──────────────────────────────────────────────
@@ -21,42 +28,48 @@ def upsert_lead(conn, data: dict):
     sql = """
         INSERT INTO leads (
             monday_item_id, monday_board_id, monday_group_id, monday_group_name,
-            name, email, phone, company, location, website,
-            client_status, spanish_speaking, position, value_level,
-            mood, follow_up_status, sentiment,
-            due_date, notes_text, assigned_to_name,
+            name, first_name, last_name, email, phone, company,
+            lead_score, status, sequence_status, sba, cim_sent,
+            is_broker, proof_of_funds, industry_tags, listing_number,
+            notes_text, assigned_to_name,
+            start_date, sequence_start_date, date_sent,
             raw_column_values, monday_created_at, monday_updated_at, last_synced_at
         )
         VALUES (
             %(monday_item_id)s, %(monday_board_id)s, %(monday_group_id)s, %(monday_group_name)s,
-            %(name)s, %(email)s, %(phone)s, %(company)s, %(location)s, %(website)s,
-            %(client_status)s, %(spanish_speaking)s, %(position)s, %(value_level)s,
-            %(mood)s, %(follow_up_status)s, %(sentiment)s,
-            %(due_date)s, %(notes_text)s, %(assigned_to_name)s,
+            %(name)s, %(first_name)s, %(last_name)s, %(email)s, %(phone)s, %(company)s,
+            %(lead_score)s, %(status)s, %(sequence_status)s, %(sba)s, %(cim_sent)s,
+            %(is_broker)s, %(proof_of_funds)s, %(industry_tags)s, %(listing_number)s,
+            %(notes_text)s, %(assigned_to_name)s,
+            %(start_date)s, %(sequence_start_date)s, %(date_sent)s,
             %(raw_column_values)s, %(monday_created_at)s, %(monday_updated_at)s, NOW()
         )
         ON CONFLICT (monday_item_id) DO UPDATE SET
-            monday_group_id     = EXCLUDED.monday_group_id,
-            monday_group_name   = EXCLUDED.monday_group_name,
-            name                = EXCLUDED.name,
-            email               = EXCLUDED.email,
-            phone               = EXCLUDED.phone,
-            company             = EXCLUDED.company,
-            location            = EXCLUDED.location,
-            website             = EXCLUDED.website,
-            client_status       = EXCLUDED.client_status,
-            spanish_speaking    = EXCLUDED.spanish_speaking,
-            position            = EXCLUDED.position,
-            value_level         = EXCLUDED.value_level,
-            mood                = EXCLUDED.mood,
-            follow_up_status    = EXCLUDED.follow_up_status,
-            sentiment           = EXCLUDED.sentiment,
-            due_date            = EXCLUDED.due_date,
-            notes_text          = EXCLUDED.notes_text,
-            assigned_to_name    = EXCLUDED.assigned_to_name,
-            raw_column_values   = EXCLUDED.raw_column_values,
-            monday_updated_at   = EXCLUDED.monday_updated_at,
-            last_synced_at      = NOW()
+            monday_group_id         = EXCLUDED.monday_group_id,
+            monday_group_name       = EXCLUDED.monday_group_name,
+            name                    = EXCLUDED.name,
+            first_name              = EXCLUDED.first_name,
+            last_name               = EXCLUDED.last_name,
+            email                   = EXCLUDED.email,
+            phone                   = EXCLUDED.phone,
+            company                 = EXCLUDED.company,
+            lead_score              = EXCLUDED.lead_score,
+            status                  = EXCLUDED.status,
+            sequence_status         = EXCLUDED.sequence_status,
+            sba                     = EXCLUDED.sba,
+            cim_sent                = EXCLUDED.cim_sent,
+            is_broker               = EXCLUDED.is_broker,
+            proof_of_funds          = EXCLUDED.proof_of_funds,
+            industry_tags           = EXCLUDED.industry_tags,
+            listing_number          = EXCLUDED.listing_number,
+            notes_text              = EXCLUDED.notes_text,
+            assigned_to_name        = EXCLUDED.assigned_to_name,
+            start_date              = EXCLUDED.start_date,
+            sequence_start_date     = EXCLUDED.sequence_start_date,
+            date_sent               = EXCLUDED.date_sent,
+            raw_column_values       = EXCLUDED.raw_column_values,
+            monday_updated_at       = EXCLUDED.monday_updated_at,
+            last_synced_at          = NOW()
     """
     with conn.cursor() as cur:
         cur.execute(sql, {**data, "raw_column_values": psycopg2.extras.Json(data.get("raw_column_values"))})
@@ -103,10 +116,10 @@ def save_sync_state(conn, source: str, cursor: Optional[str], items_added: int =
 # ── Read: agent query functions ───────────────────────────────
 def get_leads_by_status(conn, status: str):
     sql = """
-        SELECT id, name, email, phone, company, client_status,
-               follow_up_status, assigned_to_name, monday_updated_at
+        SELECT id, name, email, phone, company, status,
+               sequence_status, lead_score, assigned_to_name, monday_updated_at
         FROM leads
-        WHERE LOWER(client_status) = LOWER(%s)
+        WHERE LOWER(status) = LOWER(%s)
         ORDER BY monday_updated_at DESC
         LIMIT 50
     """
@@ -117,13 +130,13 @@ def get_leads_by_status(conn, status: str):
 
 def get_stale_leads(conn, days: int = 30):
     sql = """
-        SELECT id, name, email, phone, company, client_status,
-               follow_up_status, assigned_to_name, monday_updated_at
+        SELECT id, name, email, phone, company, status,
+               sequence_status, lead_score, assigned_to_name, monday_updated_at
         FROM leads
         WHERE monday_updated_at < NOW() - INTERVAL '1 day' * %s
-          AND client_status NOT ILIKE '%%closed%%'
-          AND client_status NOT ILIKE '%%won%%'
-          AND client_status NOT ILIKE '%%lost%%'
+          AND status NOT ILIKE '%%closed%%'
+          AND status NOT ILIKE '%%won%%'
+          AND status NOT ILIKE '%%lost%%'
         ORDER BY monday_updated_at ASC
         LIMIT 50
     """
@@ -134,8 +147,8 @@ def get_stale_leads(conn, days: int = 30):
 
 def search_leads(conn, query: str):
     sql = """
-        SELECT id, name, email, phone, company, client_status,
-               follow_up_status, assigned_to_name, monday_updated_at
+        SELECT id, name, email, phone, company, status,
+               sequence_status, lead_score, assigned_to_name, monday_updated_at
         FROM leads
         WHERE name    ILIKE %s
            OR email   ILIKE %s
@@ -165,15 +178,38 @@ def get_lead_with_notes(conn, lead_id: int) -> Optional[dict]:
 
 
 def get_summary_stats(conn) -> dict:
-    sql = """
-        SELECT client_status, COUNT(*) as count
-        FROM leads
-        GROUP BY client_status
-        ORDER BY count DESC
-    """
     with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-        cur.execute(sql)
-        return {"by_status": [dict(r) for r in cur.fetchall()]}
+        cur.execute("""
+            SELECT monday_group_name, COUNT(*) as count
+            FROM leads
+            GROUP BY monday_group_name
+            ORDER BY count DESC
+        """)
+        by_group = [dict(r) for r in cur.fetchall()]
+
+        cur.execute("""
+            SELECT lead_score, COUNT(*) as count
+            FROM leads
+            WHERE lead_score IS NOT NULL
+            GROUP BY lead_score
+            ORDER BY count DESC
+        """)
+        by_score = [dict(r) for r in cur.fetchall()]
+
+        cur.execute("""
+            SELECT sequence_status, COUNT(*) as count
+            FROM leads
+            WHERE sequence_status IS NOT NULL
+            GROUP BY sequence_status
+            ORDER BY count DESC
+        """)
+        by_sequence = [dict(r) for r in cur.fetchall()]
+
+    return {
+        "by_pipeline_stage": by_group,
+        "by_lead_score": by_score,
+        "by_sequence_status": by_sequence,
+    }
 
 
 # ── Contact resolution ────────────────────────────────────────
@@ -207,12 +243,14 @@ def find_or_create_contact(conn, name, email, phone, company, lead_id) -> tuple:
                     UPDATE contacts
                     SET monday_lead_id = COALESCE(monday_lead_id, %s),
                         name = COALESCE(name, %s),
-                        phone = COALESCE(phone, %s),
+                        phone = CASE WHEN phone IS NULL
+                                     AND NOT EXISTS (SELECT 1 FROM contacts c2 WHERE c2.phone = %s AND c2.id != contacts.id)
+                                     THEN %s ELSE phone END,
                         company = COALESCE(company, %s),
                         in_monday = in_monday OR %s,
                         updated_at = NOW()
                     WHERE id = %s
-                """, (lead_id, name, phone, company, lead_id is not None, row["id"]))
+                """, (lead_id, name, phone, phone, company, lead_id is not None, row["id"]))
                 return row["id"], "email_match"
 
         # Level 2 — exact phone match
@@ -224,12 +262,14 @@ def find_or_create_contact(conn, name, email, phone, company, lead_id) -> tuple:
                     UPDATE contacts
                     SET monday_lead_id = COALESCE(monday_lead_id, %s),
                         name = COALESCE(name, %s),
-                        email = COALESCE(email, %s),
+                        email = CASE WHEN email IS NULL
+                                     AND NOT EXISTS (SELECT 1 FROM contacts c2 WHERE c2.email = %s AND c2.id != contacts.id)
+                                     THEN %s ELSE email END,
                         company = COALESCE(company, %s),
                         in_monday = in_monday OR %s,
                         updated_at = NOW()
                     WHERE id = %s
-                """, (lead_id, name, email, company, lead_id is not None, row["id"]))
+                """, (lead_id, name, email, email, company, lead_id is not None, row["id"]))
                 return row["id"], "phone_match"
 
         # Level 3 — exact name match (case-insensitive)
@@ -240,21 +280,30 @@ def find_or_create_contact(conn, name, email, phone, company, lead_id) -> tuple:
                 cur.execute("""
                     UPDATE contacts
                     SET monday_lead_id = COALESCE(monday_lead_id, %s),
-                        email = COALESCE(email, %s),
-                        phone = COALESCE(phone, %s),
+                        email = CASE WHEN email IS NULL
+                                     AND NOT EXISTS (SELECT 1 FROM contacts c2 WHERE c2.email = %s AND c2.id != contacts.id)
+                                     THEN %s ELSE email END,
+                        phone = CASE WHEN phone IS NULL
+                                     AND NOT EXISTS (SELECT 1 FROM contacts c2 WHERE c2.phone = %s AND c2.id != contacts.id)
+                                     THEN %s ELSE phone END,
                         company = COALESCE(company, %s),
                         in_monday = in_monday OR %s,
                         updated_at = NOW()
                     WHERE id = %s
-                """, (lead_id, email, phone, company, lead_id is not None, row["id"]))
+                """, (lead_id, email, email, phone, phone, company, lead_id is not None, row["id"]))
                 return row["id"], "name_match"
 
-        # Level 4 — create new contact
+        # Level 4 — create new contact (skip if email/phone already taken)
         cur.execute("""
             INSERT INTO contacts (name, email, phone, company, monday_lead_id, in_monday, resolution_status)
-            VALUES (%s, %s, %s, %s, %s, TRUE, 'auto')
+            VALUES (
+                %s,
+                CASE WHEN NOT EXISTS (SELECT 1 FROM contacts WHERE email = %s) THEN %s ELSE NULL END,
+                CASE WHEN NOT EXISTS (SELECT 1 FROM contacts WHERE phone = %s) THEN %s ELSE NULL END,
+                %s, %s, TRUE, 'auto'
+            )
             RETURNING id
-        """, (name, email, phone, company, lead_id))
+        """, (name, email, email, phone, phone, company, lead_id))
 
         return cur.fetchone()["id"], "created"
 

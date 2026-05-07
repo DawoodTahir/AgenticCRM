@@ -1,5 +1,9 @@
+import os
 import logging
 import structlog
+
+# Ensure logs directory exists
+os.makedirs("logs", exist_ok=True)
 
 # Write logs to file + console
 file_handler = logging.FileHandler("logs/crm.log")
