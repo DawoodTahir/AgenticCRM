@@ -2,7 +2,7 @@
 .env
 creds.json
 token_gmail*.pkl
-
+token_readai.pkl
 # Python
 __pycache__/
 *.pyc
@@ -11,6 +11,8 @@ __pycache__/
 # Data
 whatsapp/
 logs/
+db/schema.sql
+db/sent_part5
 
 # IDE
 .vscode/

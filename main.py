@@ -1,16 +1,16 @@
 import sys
-from connectors.monday import sync_monday_leads
+from connectors.monday import sync_monday_leads,embed_monday_notes
 from connectors.gmail import sync_all_gmail
 from connectors.whatsapp import sync_whatsapp
+from connectors.outlook_mbox import import_outlook_mbox
 from agents.lead_agent import ask
 from bot.telegram_bot import run_bot
 from db.model import get_connection, resolve_monday_contacts, merge_duplicate_contacts
 from connectors.embeddings import embed_all_pending
 
-
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        if sys.argv[1] == "sync":
+        if sys.argv[1] == "monday":
             sync_monday_leads()
 
         elif sys.argv[1] == "resolve":
@@ -30,6 +30,14 @@ if __name__ == "__main__":
             sync_all_gmail()
         elif sys.argv[1] == "whatsapp":
             sync_whatsapp()
+        elif sys.argv[1] == "outlook":
+            import_outlook_mbox()
+        elif sys.argv[1] == "import-mbox":
+            from connectors.outlook_mbox import import_mbox
+            path  = sys.argv[2]
+            label = sys.argv[3]
+            field = sys.argv[4] if len(sys.argv) > 4 else "from"
+            import_mbox(path, source=label, contact_field=field)
         elif sys.argv[1] == "bot":
             run_bot()
         elif sys.argv[1] == "embed":
@@ -43,6 +51,8 @@ if __name__ == "__main__":
                 print(f"  Contacts merged        : {stats['contacts_merged']}")
             finally:
                 conn.close()
+        elif sys.argv[1] == "monday-notes":
+            embed_monday_notes()
         elif sys.argv[1] == "ask":
             question = " ".join(sys.argv[2:])
             print(ask(question))

@@ -10,7 +10,11 @@ load_dotenv()
 
 log = get_logger("bot")
 
-ALLOWED_USER_IDS = []  # Leave empty to allow anyone, or add your Telegram user ID
+ALLOWED_USER_IDS = [
+    int(uid.strip())
+    for uid in os.environ.get("ALLOWED_TELEGRAM_USER_IDS", "").split(",")
+    if uid.strip()
+]
 
 SAFE_REPLY = "I can only help with CRM and sales questions for Goldenberry Farms."
 

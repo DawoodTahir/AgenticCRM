@@ -12,45 +12,50 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE IF NOT EXISTS leads (
 
-    id                  SERIAL PRIMARY KEY,
-    monday_item_id      TEXT        NOT NULL UNIQUE,
-    monday_board_id     TEXT        NOT NULL,
-    monday_group_id     TEXT,
-    monday_group_name   TEXT,
+    id                      SERIAL PRIMARY KEY,
+    monday_item_id          TEXT        NOT NULL UNIQUE,
+    monday_board_id         TEXT        NOT NULL,
+    monday_group_id         TEXT,
+    monday_group_name       TEXT,
 
-    name                TEXT,
-    email               TEXT,
-    phone               TEXT,
-    company             TEXT,
-    location            TEXT,
-    website             TEXT,
+    name                    TEXT,
+    first_name              TEXT,
+    last_name               TEXT,
+    email                   TEXT,
+    phone                   TEXT,
+    company                 TEXT,
 
-    client_status       TEXT,
-    spanish_speaking    TEXT,
-    position            TEXT,
-    value_level         TEXT,
-    mood                TEXT,
-    follow_up_status    TEXT,
-    sentiment           TEXT,
+    lead_score              TEXT,
+    status                  TEXT,
+    sequence_status         TEXT,
+    sba                     TEXT,
+    cim_sent                TEXT,
+    is_broker               BOOLEAN     DEFAULT FALSE,
+    proof_of_funds          BOOLEAN     DEFAULT FALSE,
+    industry_tags           TEXT,
+    listing_number          TEXT,
+    notes_text              TEXT,
+    assigned_to_name        TEXT,
 
-    due_date            DATE,
-    notes_text          TEXT,
-    assigned_to_name    TEXT,
-    raw_column_values   JSONB,
+    start_date              DATE,
+    sequence_start_date     DATE,
+    date_sent               DATE,
 
-    monday_created_at   TIMESTAMPTZ,
-    monday_updated_at   TIMESTAMPTZ,
+    raw_column_values       JSONB,
+    monday_created_at       TIMESTAMPTZ,
+    monday_updated_at       TIMESTAMPTZ,
 
-    ingested_at         TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    last_synced_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+    ingested_at             TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    last_synced_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 
 );
 
-CREATE INDEX IF NOT EXISTS idx_leads_email           ON leads (email);
-CREATE INDEX IF NOT EXISTS idx_leads_client_status   ON leads (client_status);
-CREATE INDEX IF NOT EXISTS idx_leads_follow_up       ON leads (follow_up_status);
-CREATE INDEX IF NOT EXISTS idx_leads_monday_updated  ON leads (monday_updated_at);
-CREATE INDEX IF NOT EXISTS idx_leads_board           ON leads (monday_board_id);
+CREATE INDEX IF NOT EXISTS idx_leads_email              ON leads (email);
+CREATE INDEX IF NOT EXISTS idx_leads_lead_score         ON leads (lead_score);
+CREATE INDEX IF NOT EXISTS idx_leads_status             ON leads (status);
+CREATE INDEX IF NOT EXISTS idx_leads_sequence_status    ON leads (sequence_status);
+CREATE INDEX IF NOT EXISTS idx_leads_monday_updated     ON leads (monday_updated_at);
+CREATE INDEX IF NOT EXISTS idx_leads_board              ON leads (monday_board_id);
 
 
 -- ============================================================
