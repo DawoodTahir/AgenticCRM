@@ -1,7 +1,12 @@
-import re 
+import re
 import os
-import hashlib 
-from logger import get_logger 
+import hashlib
+from googleapiclient.discovery import build
+from connectors.gmail_auth import authenticate
+from db.model import get_connection, find_or_create_contact
+from logger import get_logger
+
+log = get_logger("readai")
 
 TOKEN_FILE = "token_readai.pkl"
 FOLDER_NAME = os.environ.get("READAI_FOLDER", "Read AI")
@@ -10,31 +15,28 @@ EMAIL_REGEX = re.compile(r"\b[\w.+-]+@[\w.-]+\.\w+\b")
 
 SECTION_PATTERN = re.compile(
     r"^\s*(?:[✨💬✅❓📝🎯📋📊🔑]\s*)?"
-    r"(Summary| Chapters\s*&?\s*Topics|Action\s*Items|Key\s*Questions|Topic|Transcript)"
-    r"\s*$"
+    r"(Summary|Chapters\s*&?\s*Topics|Action\s*Items|Key\s*Questions|Topic|Transcript)"
+    r"\s*$",
     re.MULTILINE | re.IGNORECASE,
 )
 
 
 
-def get_folder_id(drive_service, folder:str):
-
-    query = {
-        f" mimeType = 'application/vnd.google-apps.folder' "
-        f"and name = '{folder}' and trashed = false" 
-    }
-
-
-    res = drive_service.files().list(q = query, fields = "files(id, name)").execute()
+def get_folder_id(drive_service, folder: str):
+    query = (
+        f"mimeType = 'application/vnd.google-apps.folder' "
+        f"and name = '{folder}' and trashed = false"
+    )
+    res = drive_service.files().list(q=query, fields="files(id, name)").execute()
     folders = res.get("files", [])
     return folders[0]["id"] if folders else None
 
+
 def list_meeting_docs(drive_service, folder_id: str):
     query = (
-        f"'{folder_id}" in parents"
+        f"'{folder_id}' in parents "
         f"and mimeType='application/vnd.google-apps.document' "
         f"and trashed=false"
-
     )
 
     docs = []
@@ -58,15 +60,15 @@ def export_doc_text(drive_service, doc_id: str) -> str:
     ).execute()
 
     if isinstance(raw, bytes):
-        return raw.decode("utf-8", error = "ignore")
+        return raw.decode("utf-8", errors="ignore")
     return str(raw)
 
 
-def extract_relevant_selections(text: str) -> dict:
+def extract_relevant_sections(text: str) -> dict:
     matches = list(SECTION_PATTERN.finditer(text))
     found = {}
-    for i,m in enumerate(matches):
-        header = m.group(1).strip().lower().repalce("&","").replace(" ","")
+    for i, m in enumerate(matches):
+        header = m.group(1).strip().lower().replace("&", "").replace(" ", "")
         start = m.end()
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
         body = text[start:end].strip()

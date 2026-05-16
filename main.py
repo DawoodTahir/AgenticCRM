@@ -53,6 +53,9 @@ if __name__ == "__main__":
                 conn.close()
         elif sys.argv[1] == "monday-notes":
             embed_monday_notes()
+        elif sys.argv[1] == "eval":
+            from tests.run_eval import run_eval
+            run_eval()
         elif sys.argv[1] == "ask":
             question = " ".join(sys.argv[2:])
             print(ask(question))

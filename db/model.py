@@ -17,7 +17,15 @@ def get_connection():
     if not db_url:
         raise RuntimeError("DATABASE_URL environment variable is not set")
     try:
-        return psycopg2.connect(db_url)
+        return psycopg2.connect(
+            db_url,
+            options="-c statement_timeout=120000",
+            keepalives=1,
+            keepalives_idle=30,
+            keepalives_interval=10,
+            keepalives_count=5,
+            connect_timeout=10,
+        )
     except psycopg2.OperationalError as e:
         log.error("db_connection_failed", error=str(e))
         raise RuntimeError(f"Cannot connect to database: {e}") from e
@@ -313,27 +321,42 @@ def resolve_monday_contacts(conn) -> dict:
     Read all leads and create/link contacts.
     Safe to re-run — matches by email/phone to avoid duplicates.
     """
+    with conn.cursor() as cur:
+        cur.execute("SET statement_timeout = '60s'")
+
     with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute("SELECT id, name, email, phone, company FROM leads ORDER BY id ASC")
         leads = cur.fetchall()
 
-    stats = {"created": 0, "email_match": 0, "phone_match": 0, "name_match": 0, "skipped": 0}
+    stats = {"created": 0, "email_match": 0, "phone_match": 0, "name_match": 0, "skipped": 0, "failed": 0}
+    total = len(leads)
 
-    for lead in leads:
+    for i, lead in enumerate(leads):
         if not lead["email"] and not lead["phone"] and not lead["name"]:
             stats["skipped"] += 1
             continue
 
-        _, method = find_or_create_contact(
-            conn,
-            name    = lead["name"],
-            email   = lead["email"],
-            phone   = lead["phone"],
-            company = lead["company"],
-            lead_id = lead["id"],
-        )
-        stats[method] += 1
+        try:
+            _, method = find_or_create_contact(
+                conn,
+                name    = lead["name"],
+                email   = lead["email"],
+                phone   = lead["phone"],
+                company = lead["company"],
+                lead_id = lead["id"],
+            )
+            stats[method] += 1
+        except Exception as e:
+            stats["failed"] += 1
+            log.error("resolve_failed", lead_id=lead["id"], error=str(e))
+            conn.rollback()
+            continue
 
+        if (i + 1) % 100 == 0:
+            conn.commit()
+            log.info("resolve_progress", done=i+1, total=total, stats=stats)
+
+    conn.commit()
     return stats
 
 

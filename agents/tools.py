@@ -21,6 +21,68 @@ def _serialize(data) -> str:
     return json.dumps(data, default=str, indent=2)
 
 
+SOURCE_LABELS = {
+    "gmail":              "Gmail",
+    "tw_outlook_inbox":   "Outlook Inbox",
+    "tw_outlook_sent":    "Outlook Sent",
+    "whatsapp":           "WhatsApp",
+    "monday_inline":      "Monday note",
+    "monday_comment":     "Monday comment",
+    "readai":             "Read.ai meeting",
+    "outlook_inbox":      "Outlook Inbox",
+    "outlook_sent":       "Outlook Sent",
+}
+
+
+def _label(source: str) -> str:
+    return SOURCE_LABELS.get(source, source or "unknown")
+
+
+def _source_bucket(source: str) -> str:
+    """Group a source into a high-level bucket the agent can reason about."""
+    if source in ("gmail", "tw_outlook_inbox", "tw_outlook_sent",
+                  "outlook_inbox", "outlook_sent"):
+        return "emails"
+    if source in ("monday_inline", "monday_comment"):
+        return "monday_notes"
+    if source == "whatsapp":
+        return "whatsapp"
+    if source == "readai":
+        return "meetings"
+    return "other"
+
+
+def _fetch_contact_content(conn, contact_id: int, per_bucket: int = 8, snippet_chars: int = 800) -> dict:
+    """
+    Pull recent content for one contact, grouped by bucket
+    (emails / meetings / whatsapp / monday_notes).
+    Each item has a longer snippet so the agent can summarize bodies, not just metadata.
+    """
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        cur.execute("""
+            SELECT id, source, source_ref_id, content_text, created_at
+            FROM contact_embeddings
+            WHERE contact_id = %s
+            ORDER BY created_at DESC NULLS LAST, id DESC
+            LIMIT 200
+        """, (contact_id,))
+        rows = cur.fetchall()
+
+    buckets = {"emails": [], "meetings": [], "whatsapp": [], "monday_notes": [], "other": []}
+    for r in rows:
+        bucket = _source_bucket(r["source"])
+        if len(buckets[bucket]) >= per_bucket:
+            continue
+        snippet = (r["content_text"] or "")[:snippet_chars]
+        buckets[bucket].append({
+            "source": _label(r["source"]),
+            "source_ref_id": r.get("source_ref_id"),
+            "date": r.get("created_at"),
+            "snippet": snippet,
+        })
+    return buckets
+
+
 @tool
 def tool_lookup_person(name: str = None, email: str = None, phone: str = None) -> str:
     """
@@ -129,24 +191,261 @@ def tool_lookup_person(name: str = None, email: str = None, phone: str = None) -
                     "notes": lead.get("notes", []),
                 }
 
-        # --- Step 4: Recent conversations (WhatsApp + Gmail) ---
-        search_text = contact.get("name") or contact.get("email") or "contact"
-        query_embedding = generate_embedding(search_text)
-        conversations = semantic_search(
-            conn, query_embedding, contact_id=contact["id"], limit=5
-        )
-
-        if conversations:
-            result["conversations"] = [
-                {
-                    "source": c["source"],
-                    "preview": c["content_text"][:400],
-                }
-                for c in conversations
-            ]
+        # --- Step 4: Recent content grouped by source bucket ---
+        buckets = _fetch_contact_content(conn, contact["id"], per_bucket=4, snippet_chars=600)
+        if buckets["emails"]:        result["recent_emails"]       = buckets["emails"]
+        if buckets["meetings"]:      result["recent_meetings"]     = buckets["meetings"]
+        if buckets["whatsapp"]:      result["recent_whatsapp"]     = buckets["whatsapp"]
+        if buckets["monday_notes"]:  result["recent_monday_notes"] = buckets["monday_notes"]
 
         return _serialize(result)
 
+    finally:
+        conn.close()
+
+
+@tool
+def tool_person_profile(name: str = None, email: str = None) -> str:
+    """
+    Build a DEEP profile for a person — use this for questions like:
+      - "tell me about X"
+      - "give me a paragraph about X"
+      - "summarize what we know about X"
+      - "what is X interested in"
+      - "what's the latest on X"
+
+    Returns: contact info, Monday lead/status + notes, and the last 8 items per source
+    (emails, Read.ai meetings, WhatsApp, Monday notes) with content snippets long enough
+    to summarize the body — not just metadata.
+
+    Use tool_lookup_person for short factual queries (email address, phone, status).
+    Use tool_person_profile when the user wants a synthesis.
+    """
+    log.info("person_profile_called", name=name, email=email)
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            if email:
+                cur.execute("SELECT * FROM contacts WHERE email = %s", (email.lower().strip(),))
+                rows = [cur.fetchone()] if cur.rowcount else []
+            elif name:
+                cur.execute("SELECT * FROM contacts WHERE name ILIKE %s LIMIT 5", (f"%{name}%",))
+                rows = [dict(r) for r in cur.fetchall()]
+                if not rows:
+                    cur.execute("""
+                        SELECT *, similarity(name, %s) AS sim
+                        FROM contacts
+                        WHERE name IS NOT NULL AND similarity(name, %s) > 0.2
+                        ORDER BY similarity(name, %s) DESC
+                        LIMIT 5
+                    """, (name, name, name))
+                    fuzzy = [dict(r) for r in cur.fetchall()]
+                    if fuzzy:
+                        suggestions = "\n".join(
+                            f"- {r['name']} ({r.get('email') or r.get('phone') or 'no contact info'})"
+                            for r in fuzzy
+                        )
+                        return f"No exact match for '{name}'. Did you mean:\n{suggestions}\nAsk the user to confirm."
+                    return f"No contact found matching '{name}'."
+            else:
+                return "Provide a name or email."
+
+        if not rows or rows[0] is None:
+            return "No contact found."
+
+        if len(rows) > 1:
+            matches = "\n".join(
+                f"- {r['name']} ({r.get('email') or r.get('phone') or 'no contact info'})"
+                for r in rows
+            )
+            return f"Multiple contacts found:\n{matches}\nAsk the user to specify."
+
+        contact = dict(rows[0])
+        sources = []
+        if contact.get("in_monday"):   sources.append("Monday")
+        if contact.get("in_gmail"):    sources.append("Gmail")
+        if contact.get("in_whatsapp"): sources.append("WhatsApp")
+
+        profile = {
+            "contact": {
+                "name": contact.get("name"),
+                "email": contact.get("email"),
+                "phone": contact.get("phone"),
+                "company": contact.get("company"),
+                "known_in": ", ".join(sources) or "Unknown",
+            }
+        }
+
+        # Monday lead + notes
+        if contact.get("monday_lead_id"):
+            lead = get_lead_with_notes(conn, contact["monday_lead_id"])
+            if lead:
+                profile["monday_lead"] = {
+                    "pipeline_stage":      lead.get("monday_group_name"),
+                    "status":              lead.get("status"),
+                    "lead_score":          lead.get("lead_score"),
+                    "sequence_status":     lead.get("sequence_status"),
+                    "sba":                 lead.get("sba"),
+                    "cim_sent":            lead.get("cim_sent"),
+                    "is_broker":           lead.get("is_broker"),
+                    "proof_of_funds":      lead.get("proof_of_funds"),
+                    "industry_tags":       lead.get("industry_tags"),
+                    "listing_number":      lead.get("listing_number"),
+                    "assigned_to":         lead.get("assigned_to_name"),
+                    "start_date":          lead.get("start_date"),
+                    "sequence_start_date": lead.get("sequence_start_date"),
+                    "inline_notes":        lead.get("notes_text"),
+                    "comments":            lead.get("notes", []),
+                }
+
+        # Deep per-source content — last 8 per bucket, 1200-char snippets
+        buckets = _fetch_contact_content(conn, contact["id"], per_bucket=8, snippet_chars=1200)
+        if buckets["emails"]:        profile["recent_emails"]       = buckets["emails"]
+        if buckets["meetings"]:      profile["recent_meetings"]     = buckets["meetings"]
+        if buckets["whatsapp"]:      profile["recent_whatsapp"]     = buckets["whatsapp"]
+        if buckets["monday_notes"]:  profile["recent_monday_notes"] = buckets["monday_notes"]
+
+        return _serialize(profile)
+
+    finally:
+        conn.close()
+
+
+@tool
+def tool_list_recent_meetings(days: int = 30, limit: int = 10) -> str:
+    """
+    List recent Read.ai meeting summaries chronologically (most recent first),
+    WITHOUT requiring a specific person name.
+
+    Use this when the user asks about meetings/calls in general, not a specific person:
+      - "show me my last N meetings"
+      - "what meetings did we have last week"
+      - "summarize my recent Read.ai sessions"
+      - "what calls happened recently"
+
+    days: how far back to look (default 30)
+    limit: how many meetings to return (default 10)
+
+    Returns one entry per meeting (deduped) with date, participants, and summary snippet.
+    """
+    from datetime import datetime, timedelta
+    log.info("list_recent_meetings_called", days=days, limit=limit)
+    cutoff = datetime.now() - timedelta(days=days)
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT
+                    ce.source_ref_id,
+                    MAX(ce.created_at) AS meeting_at,
+                    (array_agg(ce.content_text ORDER BY ce.id))[1] AS content_text,
+                    STRING_AGG(DISTINCT c.name, ', ') AS participants
+                FROM contact_embeddings ce
+                LEFT JOIN contacts c ON c.id = ce.contact_id
+                WHERE ce.source = 'readai'
+                  AND ce.created_at >= %s
+                GROUP BY ce.source_ref_id
+                ORDER BY MAX(ce.created_at) DESC
+                LIMIT %s
+            """, (cutoff, limit))
+            rows = cur.fetchall()
+
+        if not rows:
+            return f"No Read.ai meetings found in the last {days} days."
+
+        meetings = [{
+            "date":         r["meeting_at"],
+            "participants": r["participants"],
+            "summary":      (r["content_text"] or "")[:1500],
+        } for r in rows]
+        return _serialize(meetings)
+    finally:
+        conn.close()
+
+
+@tool
+def tool_list_conversations_since(days: int = 7, max_per_source: int = 8) -> str:
+    """
+    List conversations (emails, meetings, WhatsApp, Monday comments) from the
+    last N days WITHOUT requiring a specific person name.
+
+    Use for date-relative questions about activity in general:
+      - "what conversations did we have last week"     → days=7
+      - "show me activity this month"                  → days=30
+      - "what happened in the last 14 days"            → days=14
+      - "any new emails today"                         → days=1
+
+    Returns content grouped by source (meetings / emails / whatsapp / monday_notes).
+    Each item has date, contact name, and a snippet.
+    """
+    from datetime import datetime, timedelta
+    log.info("list_conversations_since_called", days=days, max_per_source=max_per_source)
+    cutoff = datetime.now() - timedelta(days=days)
+    conn = get_connection()
+    try:
+        result = {"period": f"Last {days} days (since {cutoff.date().isoformat()})"}
+
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT MAX(ce.created_at) AS date,
+                       (array_agg(ce.content_text ORDER BY ce.id))[1] AS content_text,
+                       STRING_AGG(DISTINCT c.name, ', ') AS participants
+                FROM contact_embeddings ce
+                LEFT JOIN contacts c ON c.id = ce.contact_id
+                WHERE ce.source = 'readai' AND ce.created_at >= %s
+                GROUP BY ce.source_ref_id
+                ORDER BY MAX(ce.created_at) DESC
+                LIMIT %s
+            """, (cutoff, max_per_source))
+            meetings = [{
+                "date": r["date"],
+                "participants": r["participants"],
+                "snippet": (r["content_text"] or "")[:800],
+            } for r in cur.fetchall()]
+        if meetings: result["meetings"] = meetings
+
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT ce.created_at AS date, ce.source,
+                       ce.content_text, c.name AS contact_name
+                FROM contact_embeddings ce
+                LEFT JOIN contacts c ON c.id = ce.contact_id
+                WHERE ce.source IN ('gmail', 'tw_outlook_inbox', 'tw_outlook_sent',
+                                    'outlook_inbox', 'outlook_sent')
+                  AND ce.created_at >= %s
+                ORDER BY ce.created_at DESC
+                LIMIT %s
+            """, (cutoff, max_per_source))
+            emails = [{
+                "date": r["date"],
+                "source": _label(r["source"]),
+                "contact": r["contact_name"],
+                "snippet": (r["content_text"] or "")[:500],
+            } for r in cur.fetchall()]
+        if emails: result["emails"] = emails
+
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT ce.created_at AS date, ce.source,
+                       ce.content_text, c.name AS contact_name
+                FROM contact_embeddings ce
+                LEFT JOIN contacts c ON c.id = ce.contact_id
+                WHERE ce.source IN ('whatsapp', 'monday_inline', 'monday_comment')
+                  AND ce.created_at >= %s
+                ORDER BY ce.created_at DESC
+                LIMIT %s
+            """, (cutoff, max_per_source))
+            other = [{
+                "date": r["date"],
+                "source": _label(r["source"]),
+                "contact": r["contact_name"],
+                "snippet": (r["content_text"] or "")[:500],
+            } for r in cur.fetchall()]
+        if other: result["whatsapp_and_monday"] = other
+
+        if len(result) == 1:
+            return f"No conversations found in the last {days} days."
+        return _serialize(result)
     finally:
         conn.close()
 
@@ -292,6 +591,9 @@ def tool_get_leads_by_pipeline_stage(stage: str) -> str:
 # All tools in one list — imported by the agent
 ALL_TOOLS = [
     tool_lookup_person,
+    tool_person_profile,
+    tool_list_recent_meetings,
+    tool_list_conversations_since,
     tool_get_leads_by_status,
     tool_get_stale_leads,
     tool_get_lead_details,
