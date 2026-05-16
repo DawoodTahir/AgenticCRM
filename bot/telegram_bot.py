@@ -16,7 +16,7 @@ ALLOWED_USER_IDS = [
     if uid.strip()
 ]
 
-SAFE_REPLY = "I can only help with CRM and sales questions for Goldenberry Farms."
+SAFE_REPLY = "I can only help with brokerage and CRM questions. Anything else, please ask your team."
 
 # --- Layer 2: Input guard — blocks injection BEFORE gpt-4o sees it ---
 INJECTION_PATTERNS = [
@@ -61,12 +61,15 @@ def sanitize_output(text: str) -> str:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Hi! I'm your CRM assistant for Goldenberry Farms.\n\n"
-        "Ask me anything about your leads, e.g.:\n"
-        "• Which leads are LATE?\n"
-        "• Who should I follow up with today?\n"
-        "• Tell me about Ben Hartman\n"
-        "• Give me a pipeline summary"
+        "Hi, I'm Ashley — your brokerage CRM assistant.\n\n"
+        "I can pull info from emails (Gmail + Outlook), WhatsApp, Monday, and Read.ai meeting notes.\n\n"
+        "Try asking:\n"
+        "• Tell me about Luis Contreras\n"
+        "• What was discussed in my last call with Mark Sanfilippo?\n"
+        "• Who should I pitch listing BBF-350-510476 to?\n"
+        "• Which buyers are stalled in CIM Sent?\n"
+        "• Do we have POF on file for Marlon Day?\n"
+        "• What conversations did we have last week?"
     )
 
 
