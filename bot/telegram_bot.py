@@ -16,6 +16,14 @@ ALLOWED_USER_IDS = [
     if uid.strip()
 ]
 
+# Subset of ALLOWED_USER_IDS who can upload data files (WhatsApp .zip archives).
+# If unset, falls back to ALLOWED_USER_IDS (any whitelisted user can upload).
+ADMIN_USER_IDS = [
+    int(uid.strip())
+    for uid in os.environ.get("ADMIN_TELEGRAM_USER_IDS", "").split(",")
+    if uid.strip()
+] or ALLOWED_USER_IDS
+
 SAFE_REPLY = "I can only help with brokerage and CRM questions. Anything else, please ask your team."
 
 # --- Layer 2: Input guard — blocks injection BEFORE gpt-4o sees it ---
@@ -162,11 +170,88 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Error: {str(e)}")
 
 
+async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Receive a WhatsApp .zip upload from an admin, sync it, embed it, reply with stats."""
+    import asyncio
+    import tempfile
+    import os as _os
+
+    user_id = update.effective_user.id
+    doc = update.message.document
+
+    if ALLOWED_USER_IDS and user_id not in ALLOWED_USER_IDS:
+        await update.message.reply_text("Unauthorized.")
+        return
+
+    if ADMIN_USER_IDS and user_id not in ADMIN_USER_IDS:
+        await update.message.reply_text(
+            "Only admins can upload data files. Ask your team to grant admin access."
+        )
+        return
+
+    fname = (doc.file_name or "").strip()
+    if not fname.lower().endswith(".zip"):
+        await update.message.reply_text(
+            "I only accept WhatsApp `.zip` exports. Other file types aren't supported."
+        )
+        return
+
+    if doc.file_size and doc.file_size > 20 * 1024 * 1024:
+        await update.message.reply_text(
+            f"`{fname}` is {doc.file_size // 1024 // 1024} MB. "
+            "Telegram bot file limit is 20 MB. Use the CLI for larger archives."
+        )
+        return
+
+    await update.message.reply_text(f"Got `{fname}`. Downloading and processing...")
+    log.info("whatsapp_zip_received", file=fname, size=doc.file_size, user_id=user_id)
+
+    local_path = _os.path.join(tempfile.gettempdir(), fname)
+    try:
+        tg_file = await doc.get_file()
+        await tg_file.download_to_drive(local_path)
+
+        # Sync (sync function, run in thread so event loop isn't blocked)
+        from connectors.whatsapp import sync_whatsapp_zip
+        stats = await asyncio.to_thread(sync_whatsapp_zip, local_path)
+
+        if stats.get("skipped"):
+            await update.message.reply_text(
+                f"Skipped `{fname}` — {stats.get('reason', 'unknown reason')}"
+            )
+            return
+
+        await update.message.reply_text(
+            f"Parsed {stats['messages']} messages for *{stats['contact']}*. "
+            f"{stats['new_chunks']} new chunks inserted. Generating embeddings..."
+        )
+
+        # Embed (also sync — handles all pending rows across sources)
+        from connectors.embeddings import embed_all_pending
+        await asyncio.to_thread(embed_all_pending)
+
+        await update.message.reply_text(
+            f"Done — `{fname}` is searchable now.\n\n"
+            f"Try asking: *tell me about {stats['contact']}* "
+            f"or *what did we discuss with {stats['contact']}*."
+        )
+
+    except Exception as e:
+        log.error("whatsapp_upload_failed", file=fname, user_id=user_id, error=str(e))
+        await update.message.reply_text(f"Failed to process `{fname}`: {str(e)[:200]}")
+    finally:
+        try:
+            _os.unlink(local_path)
+        except Exception:
+            pass
+
+
 def run_bot():
     token = os.environ["TELEGRAM_BOT_TOKEN"]
     app = ApplicationBuilder().token(token).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(handle_contact_selection))
+    app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     # Render sets RENDER=true and PORT automatically
