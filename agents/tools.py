@@ -21,6 +21,14 @@ def _serialize(data) -> str:
     return json.dumps(data, default=str, indent=2)
 
 
+
+NOISE_EMAIL_PATTERNS = (
+    "noreply", "no-reply", "donotreply", "do-not-reply",
+    "notifications", "notification@", "mailer-daemon",
+    "alerts@", "newsletter", "automated",
+)
+
+
 SOURCE_LABELS = {
     "gmail":              "Gmail",
     "tw_outlook_inbox":   "Outlook Inbox",
@@ -32,6 +40,56 @@ SOURCE_LABELS = {
     "outlook_inbox":      "Outlook Inbox",
     "outlook_sent":       "Outlook Sent",
 }
+
+
+def _is_noise_email(email: str | None) -> bool:
+    if not email:
+        return False
+    e = email.lower()
+    return any(p in e for p in NOISE_EMAIL_PATTERNS)
+
+
+def _prefer_real_contacts(rows: list[dict]) -> list[dict]:
+    """
+    When multiple contacts share a name, drop the noise ones IF a real one exists.
+    Falls back to all rows if every match is noise (so the agent at least gets something).
+    Real contacts ordered first.
+    """
+    real  = [r for r in rows if not _is_noise_email(r.get("email"))]
+    noise = [r for r in rows if     _is_noise_email(r.get("email"))]
+    return real if real else noise
+
+
+EMAIL_HEADERS_RE = re.compile(
+    r"^Subject:\s*(?P<subject>[^\n]*)\n"
+    r"From:\s*(?P<from_>[^\n]*)\n"
+    r"To:\s*(?P<to>[^\n]*)\n"
+    r"(?:Cc:\s*(?P<cc>[^\n]*)\n)?",
+    re.IGNORECASE,
+)
+
+
+def _parse_email_headers(content_text: str) -> dict:
+    """Extract Subject/From/To/Cc from the top of email content_text."""
+    if not content_text:
+        return {}
+    m = EMAIL_HEADERS_RE.match(content_text)
+    if not m:
+        return {}
+    return {
+        "subject": (m.group("subject") or "").strip() or None,
+        "from":    (m.group("from_")   or "").strip() or None,
+        "to":      (m.group("to")      or "").strip() or None,
+        "cc":      (m.group("cc")      or "").strip() or None,
+    }
+
+
+def _strip_email_headers(content_text: str) -> str:
+    """Return content_text with the 'Subject:/From:/To:/Cc:' header block removed."""
+    if not content_text:
+        return ""
+    body_start = content_text.find("\n\n")
+    return content_text[body_start + 2:] if body_start > 0 else content_text
 
 
 def _label(source: str) -> str:
@@ -73,13 +131,22 @@ def _fetch_contact_content(conn, contact_id: int, per_bucket: int = 8, snippet_c
         bucket = _source_bucket(r["source"])
         if len(buckets[bucket]) >= per_bucket:
             continue
-        snippet = (r["content_text"] or "")[:snippet_chars]
-        buckets[bucket].append({
+
+        content = r["content_text"] or ""
+        item = {
             "source": _label(r["source"]),
             "source_ref_id": r.get("source_ref_id"),
             "date": r.get("created_at"),
-            "snippet": snippet,
-        })
+        }
+
+        if bucket == "emails":
+            headers = _parse_email_headers(content)
+            item.update({k: v for k, v in headers.items() if v})
+            item["body"] = _strip_email_headers(content)[:snippet_chars]
+        else:
+            item["snippet"] = content[:snippet_chars]
+
+        buckets[bucket].append(item)
     return buckets
 
 
@@ -115,7 +182,7 @@ def tool_lookup_person(name: str = None, email: str = None, phone: str = None) -
                     "SELECT * FROM contacts WHERE name ILIKE %s LIMIT 5",
                     (f"%{name}%",)
                 )
-                rows = [dict(r) for r in cur.fetchall()]
+                rows = _prefer_real_contacts([dict(r) for r in cur.fetchall()])
                 log.info("exact_match_results", count=len(rows))
 
                 if not rows:
@@ -128,7 +195,7 @@ def tool_lookup_person(name: str = None, email: str = None, phone: str = None) -
                     ORDER BY similarity(name, %s) DESC
                     LIMIT 5""", (name, name, name))
 
-                    fuzzy = [dict(r) for r in cur.fetchall()]
+                    fuzzy = _prefer_real_contacts([dict(r) for r in cur.fetchall()])
                     log.info("fuzzy_match_results", count=len(fuzzy))
 
                     if fuzzy:
@@ -230,7 +297,7 @@ def tool_person_profile(name: str = None, email: str = None) -> str:
                 rows = [cur.fetchone()] if cur.rowcount else []
             elif name:
                 cur.execute("SELECT * FROM contacts WHERE name ILIKE %s LIMIT 5", (f"%{name}%",))
-                rows = [dict(r) for r in cur.fetchall()]
+                rows = _prefer_real_contacts([dict(r) for r in cur.fetchall()])
                 if not rows:
                     cur.execute("""
                         SELECT *, similarity(name, %s) AS sim
@@ -239,7 +306,7 @@ def tool_person_profile(name: str = None, email: str = None) -> str:
                         ORDER BY similarity(name, %s) DESC
                         LIMIT 5
                     """, (name, name, name))
-                    fuzzy = [dict(r) for r in cur.fetchall()]
+                    fuzzy = _prefer_real_contacts([dict(r) for r in cur.fetchall()])
                     if fuzzy:
                         suggestions = "\n".join(
                             f"- {r['name']} ({r.get('email') or r.get('phone') or 'no contact info'})"
@@ -307,6 +374,108 @@ def tool_person_profile(name: str = None, email: str = None) -> str:
 
         return _serialize(profile)
 
+    finally:
+        conn.close()
+
+
+@tool
+def tool_latest_updates(name: str = None, email: str = None, limit: int = 15) -> str:
+    """
+    Get the LATEST UPDATE / WHAT'S NEW / STATUS REPORT on a contact.
+
+    Use this when the user asks about RECENT activity emphasis:
+      - "what are the most recent updates about X"
+      - "what's new with X"
+      - "status on X" / "where are we with X"
+      - "latest from X"
+
+    Returns DEEPER recent context than tool_person_profile:
+      - Up to `limit` most recent emails with subject/from/to/body
+      - Up to `limit` recent Read.ai meetings (full summaries)
+      - Recent Monday notes/comments
+      - Lead pipeline status + score + POF/CIM flags
+
+    Use tool_person_profile for general "tell me about X" (synthesis).
+    Use THIS tool when recency / deal-stage progression matters.
+    """
+    log.info("latest_updates_called", name=name, email=email, limit=limit)
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            if email:
+                cur.execute("SELECT * FROM contacts WHERE email = %s",
+                            (email.lower().strip(),))
+                rows = [cur.fetchone()] if cur.rowcount else []
+            elif name:
+                cur.execute("SELECT * FROM contacts WHERE name ILIKE %s LIMIT 5",
+                            (f"%{name}%",))
+                rows = _prefer_real_contacts([dict(r) for r in cur.fetchall()])
+                if not rows:
+                    cur.execute("""
+                        SELECT *, similarity(name, %s) AS sim
+                        FROM contacts
+                        WHERE name IS NOT NULL AND similarity(name, %s) > 0.2
+                        ORDER BY similarity(name, %s) DESC LIMIT 5
+                    """, (name, name, name))
+                    fuzzy = _prefer_real_contacts(
+                        [dict(r) for r in cur.fetchall()]
+                    )
+                    if fuzzy:
+                        suggestions = "\n".join(
+                            f"- {r['name']} "
+                            f"({r.get('email') or r.get('phone') or 'no contact info'})"
+                            for r in fuzzy
+                        )
+                        return (f"No exact match for '{name}'. "
+                                f"Did you mean:\n{suggestions}")
+                    return f"No contact found matching '{name}'."
+            else:
+                return "Provide a name or email."
+
+        if not rows or rows[0] is None:
+            return "No contact found."
+        if len(rows) > 1:
+            matches = "\n".join(
+                f"- {r['name']} "
+                f"({r.get('email') or r.get('phone') or 'no contact info'})"
+                for r in rows
+            )
+            return f"Multiple contacts found:\n{matches}\nAsk the user to specify."
+
+        contact = dict(rows[0])
+        result = {
+            "contact": {
+                "name":    contact.get("name"),
+                "email":   contact.get("email"),
+                "company": contact.get("company"),
+            }
+        }
+
+        if contact.get("monday_lead_id"):
+            lead = get_lead_with_notes(conn, contact["monday_lead_id"])
+            if lead:
+                result["monday_lead"] = {
+                    "pipeline_stage":  lead.get("monday_group_name"),
+                    "status":          lead.get("status"),
+                    "lead_score":      lead.get("lead_score"),
+                    "sequence_status": lead.get("sequence_status"),
+                    "proof_of_funds":  lead.get("proof_of_funds"),
+                    "cim_sent":        lead.get("cim_sent"),
+                    "sba":             lead.get("sba"),
+                    "listing_number":  lead.get("listing_number"),
+                    "recent_comments": (lead.get("notes") or [])[-10:],
+                }
+
+        # Deeper buckets: more rows, fuller snippets
+        buckets = _fetch_contact_content(
+            conn, contact["id"], per_bucket=limit, snippet_chars=2000
+        )
+        if buckets["emails"]:       result["recent_emails"]       = buckets["emails"]
+        if buckets["meetings"]:     result["recent_meetings"]     = buckets["meetings"]
+        if buckets["monday_notes"]: result["recent_monday_notes"] = buckets["monday_notes"]
+        if buckets["whatsapp"]:     result["recent_whatsapp"]     = buckets["whatsapp"]
+
+        return _serialize(result)
     finally:
         conn.close()
 
@@ -592,6 +761,7 @@ def tool_get_leads_by_pipeline_stage(stage: str) -> str:
 ALL_TOOLS = [
     tool_lookup_person,
     tool_person_profile,
+    tool_latest_updates,
     tool_list_recent_meetings,
     tool_list_conversations_since,
     tool_get_leads_by_status,
