@@ -12,6 +12,13 @@ __pycache__/
 whatsapp/
 logs/
 db/schema.sql
+db/*.docx
+db/*.pdf
+db/*.png
+
+# Test artifacts (runs produce timestamped output we don't want in git)
+tests/regression_*.txt
+tests/faithfulness_results_*.json
 
 # IDE
 .vscode/

@@ -98,6 +98,12 @@ def main():
 
     print(f"\nDone. Results in {out_path}")
 
+    # Faithfulness audit afterwards — runs from a fresh state since regression
+    # threads are scoped to their own run_id.
+    print(f"\n{'='*72}\nRunning faithfulness audit\n{'='*72}")
+    from tests.run_faithfulness import run as run_faith
+    run_faith()
+
 
 if __name__ == "__main__":
     main()

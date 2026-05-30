@@ -1,0 +1,839 @@
+[
+  {
+    "id": "F001_STG01",
+    "category": "pipeline_stage",
+    "question": "What pipeline stage is Kenny Gordon in?",
+    "must_contain_one_of": [
+      "Warm Leads (180"
+    ],
+    "notes": "Live DB: 'Kenny Gordon' → 'Warm Leads (180 Days)' — positive-only check; bot may legitimately mention other stages in suggestions"
+  },
+  {
+    "id": "F002_STG02",
+    "category": "pipeline_stage",
+    "question": "What pipeline stage is Daniel Kohler in?",
+    "must_contain_one_of": [
+      "Cool Leads"
+    ],
+    "notes": "Live DB: 'Daniel Kohler' → 'Cool Leads ❄️.xlsx' — positive-only check; bot may legitimately mention other stages in suggestions"
+  },
+  {
+    "id": "F003_STG03",
+    "category": "pipeline_stage",
+    "question": "What pipeline stage is Carrie  BROKER in?",
+    "must_contain_one_of": [
+      "BROKERS"
+    ],
+    "notes": "Live DB: 'Carrie  BROKER' → 'BROKERS' — positive-only check; bot may legitimately mention other stages in suggestions"
+  },
+  {
+    "id": "F004_STG04",
+    "category": "pipeline_stage",
+    "question": "What pipeline stage is Ocean Navigator in?",
+    "must_contain_one_of": [
+      "Warm Leads (180"
+    ],
+    "notes": "Live DB: 'Ocean Navigator' → 'Warm Leads (180 Days)' — positive-only check; bot may legitimately mention other stages in suggestions"
+  },
+  {
+    "id": "F005_STG05",
+    "category": "pipeline_stage",
+    "question": "What pipeline stage is Michael Dunn in?",
+    "must_contain_one_of": [
+      "Cool Leads"
+    ],
+    "notes": "Live DB: 'Michael Dunn' → 'Cool Leads ❄️.xlsx' — positive-only check; bot may legitimately mention other stages in suggestions"
+  },
+  {
+    "id": "F006_STG06",
+    "category": "pipeline_stage",
+    "question": "What pipeline stage is Nathalie Eder in?",
+    "must_contain_one_of": [
+      "Warm Leads (180"
+    ],
+    "notes": "Live DB: 'Nathalie Eder' → 'Warm Leads (180 Days)' — positive-only check; bot may legitimately mention other stages in suggestions"
+  },
+  {
+    "id": "F007_STG07",
+    "category": "pipeline_stage",
+    "question": "What pipeline stage is Elena Moro in?",
+    "must_contain_one_of": [
+      "Warm Leads (180"
+    ],
+    "notes": "Live DB: 'Elena Moro' → 'Warm Leads (180 Days)' — positive-only check; bot may legitimately mention other stages in suggestions"
+  },
+  {
+    "id": "F008_STG08",
+    "category": "pipeline_stage",
+    "question": "What pipeline stage is Amanda Betat in?",
+    "must_contain_one_of": [
+      "Cool Leads"
+    ],
+    "notes": "Live DB: 'Amanda Betat' → 'Cool Leads ❄️.xlsx' — positive-only check; bot may legitimately mention other stages in suggestions"
+  },
+  {
+    "id": "F009_STG09",
+    "category": "pipeline_stage",
+    "question": "What pipeline stage is PRIYA NIRALAY in?",
+    "must_contain_one_of": [
+      "Warm Leads (180"
+    ],
+    "notes": "Live DB: 'PRIYA NIRALAY' → 'Warm Leads (180 Days)' — positive-only check; bot may legitimately mention other stages in suggestions"
+  },
+  {
+    "id": "F010_STG10",
+    "category": "pipeline_stage",
+    "question": "What pipeline stage is Henry Monzon in?",
+    "must_contain_one_of": [
+      "Warm Leads (180"
+    ],
+    "notes": "Live DB: 'Henry Monzon' → 'Warm Leads (180 Days)' — positive-only check; bot may legitimately mention other stages in suggestions"
+  },
+  {
+    "id": "F011_SCR01",
+    "category": "lead_score",
+    "question": "What is \"andrewg bakersgroup.ca\"'s lead score?",
+    "must_contain_one_of": [
+      "\"A\"",
+      "**A**",
+      "`A`",
+      "of A.",
+      "is A."
+    ],
+    "notes": "Live DB: '\"andrewg bakersgroup.ca\"' → score 'A' — matches quoted/bolded form"
+  },
+  {
+    "id": "F012_SCR02",
+    "category": "lead_score",
+    "question": "What is Haroldo Ale Filho's lead score?",
+    "must_contain_one_of": [
+      "\"IMMEDIATE INTEREST\"",
+      "**IMMEDIATE INTEREST**",
+      "`IMMEDIATE INTEREST`",
+      "of IMMEDIATE INTEREST.",
+      "is IMMEDIATE INTEREST."
+    ],
+    "notes": "Live DB: 'Haroldo Ale Filho' → score 'IMMEDIATE INTEREST' — matches quoted/bolded form"
+  },
+  {
+    "id": "F013_SCR03",
+    "category": "lead_score",
+    "question": "What is Hines Olson Group Team's lead score?",
+    "must_contain_one_of": [
+      "\"B++\"",
+      "**B++**",
+      "`B++`",
+      "of B++.",
+      "is B++."
+    ],
+    "notes": "Live DB: 'Hines Olson Group Team' → score 'B++' — matches quoted/bolded form"
+  },
+  {
+    "id": "F014_SCR04",
+    "category": "lead_score",
+    "question": "What is loay dambour's lead score?",
+    "must_contain_one_of": [
+      "\"C\"",
+      "**C**",
+      "`C`",
+      "of C.",
+      "is C."
+    ],
+    "notes": "Live DB: 'loay dambour' → score 'C' — matches quoted/bolded form"
+  },
+  {
+    "id": "F015_SCR05",
+    "category": "lead_score",
+    "question": "What is Nick Windwer's lead score?",
+    "must_contain_one_of": [
+      "\"A\"",
+      "**A**",
+      "`A`",
+      "of A.",
+      "is A."
+    ],
+    "notes": "Live DB: 'Nick Windwer' → score 'A' — matches quoted/bolded form"
+  },
+  {
+    "id": "F016_SCR06",
+    "category": "lead_score",
+    "question": "What is Richard Kane's lead score?",
+    "must_contain_one_of": [
+      "\"A\"",
+      "**A**",
+      "`A`",
+      "of A.",
+      "is A."
+    ],
+    "notes": "Live DB: 'Richard Kane' → score 'A' — matches quoted/bolded form"
+  },
+  {
+    "id": "F017_SCR07",
+    "category": "lead_score",
+    "question": "What is Fettuccia Partners Team's lead score?",
+    "must_contain_one_of": [
+      "\"C\"",
+      "**C**",
+      "`C`",
+      "of C.",
+      "is C."
+    ],
+    "notes": "Live DB: 'Fettuccia Partners Team' → score 'C' — matches quoted/bolded form"
+  },
+  {
+    "id": "F018_SCR08",
+    "category": "lead_score",
+    "question": "What is Louis Frate's lead score?",
+    "must_contain_one_of": [
+      "\"C\"",
+      "**C**",
+      "`C`",
+      "of C.",
+      "is C."
+    ],
+    "notes": "Live DB: 'Louis Frate' → score 'C' — matches quoted/bolded form"
+  },
+  {
+    "id": "F019_POFYES1",
+    "category": "pof_status",
+    "question": "Do we have proof of funds on file for josephine markferding?",
+    "must_contain_one_of": [
+      "Yes",
+      "yes",
+      "POF: yes",
+      "proof of funds on file",
+      "submitted"
+    ],
+    "must_not_contain": [
+      "No proof of funds",
+      "POF: No",
+      "not submitted",
+      "not on file"
+    ],
+    "notes": "Live DB: 'josephine markferding' → POF=TRUE"
+  },
+  {
+    "id": "F020_POFYES2",
+    "category": "pof_status",
+    "question": "Do we have proof of funds on file for Gerard Yetming?",
+    "must_contain_one_of": [
+      "Yes",
+      "yes",
+      "POF: yes",
+      "proof of funds on file",
+      "submitted"
+    ],
+    "must_not_contain": [
+      "No proof of funds",
+      "POF: No",
+      "not submitted",
+      "not on file"
+    ],
+    "notes": "Live DB: 'Gerard Yetming' → POF=TRUE"
+  },
+  {
+    "id": "F021_POFYES3",
+    "category": "pof_status",
+    "question": "Do we have proof of funds on file for Gregory Castro?",
+    "must_contain_one_of": [
+      "Yes",
+      "yes",
+      "POF: yes",
+      "proof of funds on file",
+      "submitted"
+    ],
+    "must_not_contain": [
+      "No proof of funds",
+      "POF: No",
+      "not submitted",
+      "not on file"
+    ],
+    "notes": "Live DB: 'Gregory Castro' → POF=TRUE"
+  },
+  {
+    "id": "F022_POFYES4",
+    "category": "pof_status",
+    "question": "Do we have proof of funds on file for \"Victor P.\"?",
+    "must_contain_one_of": [
+      "Yes",
+      "yes",
+      "POF: yes",
+      "proof of funds on file",
+      "submitted"
+    ],
+    "must_not_contain": [
+      "No proof of funds",
+      "POF: No",
+      "not submitted",
+      "not on file"
+    ],
+    "notes": "Live DB: '\"Victor P.\"' → POF=TRUE"
+  },
+  {
+    "id": "F023_POFNO1",
+    "category": "pof_status",
+    "question": "Do we have proof of funds on file for Doug Higgins?",
+    "must_contain_one_of": [
+      "No",
+      "no",
+      "not",
+      "POF: No",
+      "not submitted",
+      "not on file",
+      "pending"
+    ],
+    "must_not_contain": [
+      "POF: Yes",
+      "proof of funds on file already",
+      "submitted and confirmed"
+    ],
+    "notes": "Live DB: 'Doug Higgins' → POF=FALSE"
+  },
+  {
+    "id": "F024_POFNO2",
+    "category": "pof_status",
+    "question": "Do we have proof of funds on file for Parina Patel?",
+    "must_contain_one_of": [
+      "No",
+      "no",
+      "not",
+      "POF: No",
+      "not submitted",
+      "not on file",
+      "pending"
+    ],
+    "must_not_contain": [
+      "POF: Yes",
+      "proof of funds on file already",
+      "submitted and confirmed"
+    ],
+    "notes": "Live DB: 'Parina Patel' → POF=FALSE"
+  },
+  {
+    "id": "F025_POFNO3",
+    "category": "pof_status",
+    "question": "Do we have proof of funds on file for Gregory Cottrell?",
+    "must_contain_one_of": [
+      "No",
+      "no",
+      "not",
+      "POF: No",
+      "not submitted",
+      "not on file",
+      "pending"
+    ],
+    "must_not_contain": [
+      "POF: Yes",
+      "proof of funds on file already",
+      "submitted and confirmed"
+    ],
+    "notes": "Live DB: 'Gregory Cottrell' → POF=FALSE"
+  },
+  {
+    "id": "F026_POFNO4",
+    "category": "pof_status",
+    "question": "Do we have proof of funds on file for German Ochoa?",
+    "must_contain_one_of": [
+      "No",
+      "no",
+      "not",
+      "POF: No",
+      "not submitted",
+      "not on file",
+      "pending"
+    ],
+    "must_not_contain": [
+      "POF: Yes",
+      "proof of funds on file already",
+      "submitted and confirmed"
+    ],
+    "notes": "Live DB: 'German Ochoa' → POF=FALSE"
+  },
+  {
+    "id": "F027_POFNO5",
+    "category": "pof_status",
+    "question": "Do we have proof of funds on file for Ali Benayed?",
+    "must_contain_one_of": [
+      "No",
+      "no",
+      "not",
+      "POF: No",
+      "not submitted",
+      "not on file",
+      "pending"
+    ],
+    "must_not_contain": [
+      "POF: Yes",
+      "proof of funds on file already",
+      "submitted and confirmed"
+    ],
+    "notes": "Live DB: 'Ali Benayed' → POF=FALSE"
+  },
+  {
+    "id": "F028_POFNO6",
+    "category": "pof_status",
+    "question": "Do we have proof of funds on file for james porro?",
+    "must_contain_one_of": [
+      "No",
+      "no",
+      "not",
+      "POF: No",
+      "not submitted",
+      "not on file",
+      "pending"
+    ],
+    "must_not_contain": [
+      "POF: Yes",
+      "proof of funds on file already",
+      "submitted and confirmed"
+    ],
+    "notes": "Live DB: 'james porro' → POF=FALSE"
+  },
+  {
+    "id": "F029_EML01",
+    "category": "email_lookup",
+    "question": "What is Nicholas Jimenez's email address?",
+    "must_contain_one_of": [
+      "nick.jimenez@wildyr.com"
+    ],
+    "must_not_contain_regex": [
+      "@gmail\\\\.com",
+      "@yahoo\\\\.com",
+      "@hotmail\\\\.com"
+    ],
+    "notes": "Live DB: 'Nicholas Jimenez' → 'nick.jimenez@wildyr.com'"
+  },
+  {
+    "id": "F030_EML02",
+    "category": "email_lookup",
+    "question": "What is Donald Manning's email address?",
+    "must_contain_one_of": [
+      "donmanning423@gmail.com"
+    ],
+    "must_not_contain_regex": [
+      "@yahoo\\\\.com",
+      "@hotmail\\\\.com"
+    ],
+    "notes": "Live DB: 'Donald Manning' → 'donmanning423@gmail.com'"
+  },
+  {
+    "id": "F031_EML03",
+    "category": "email_lookup",
+    "question": "What is Gonzalo Adriazola's email address?",
+    "must_contain_one_of": [
+      "gadriazola.1@gmail.com"
+    ],
+    "must_not_contain_regex": [
+      "@yahoo\\\\.com",
+      "@hotmail\\\\.com"
+    ],
+    "notes": "Live DB: 'Gonzalo Adriazola' → 'gadriazola.1@gmail.com'"
+  },
+  {
+    "id": "F032_EML04",
+    "category": "email_lookup",
+    "question": "What is John Harrison's email address?",
+    "must_contain_one_of": [
+      "john@theclearforkpartners.com"
+    ],
+    "must_not_contain_regex": [
+      "@gmail\\\\.com",
+      "@yahoo\\\\.com",
+      "@hotmail\\\\.com"
+    ],
+    "notes": "Live DB: 'John Harrison' → 'john@theclearforkpartners.com'"
+  },
+  {
+    "id": "F033_EML05",
+    "category": "email_lookup",
+    "question": "What is Colin Andrews Egbert's email address?",
+    "must_contain_one_of": [
+      "deals@trueoakventures.com"
+    ],
+    "must_not_contain_regex": [
+      "@gmail\\\\.com",
+      "@yahoo\\\\.com",
+      "@hotmail\\\\.com"
+    ],
+    "notes": "Live DB: 'Colin Andrews Egbert' → 'deals@trueoakventures.com'"
+  },
+  {
+    "id": "F034_EML06",
+    "category": "email_lookup",
+    "question": "What is Gonzalo Vila's email address?",
+    "must_contain_one_of": [
+      "gonzov@me.com"
+    ],
+    "must_not_contain_regex": [
+      "@gmail\\\\.com",
+      "@yahoo\\\\.com",
+      "@hotmail\\\\.com"
+    ],
+    "notes": "Live DB: 'Gonzalo Vila' → 'gonzov@me.com'"
+  },
+  {
+    "id": "F035_CO01",
+    "category": "company_lookup",
+    "question": "What company is Brendan Scott associated with?",
+    "must_contain_one_of": [
+      "D1"
+    ],
+    "must_not_contain": [],
+    "notes": "Live DB: 'Brendan Scott' → company 'D1 Training'"
+  },
+  {
+    "id": "F036_CO02",
+    "category": "company_lookup",
+    "question": "What company is Alba Olmos associated with?",
+    "must_contain_one_of": [
+      "Milky"
+    ],
+    "must_not_contain": [],
+    "notes": "Live DB: 'Alba Olmos' → company 'Milky Ways'"
+  },
+  {
+    "id": "F037_CO03",
+    "category": "company_lookup",
+    "question": "What company is \"Lou B.\" associated with?",
+    "must_contain_one_of": [
+      "Capitalize"
+    ],
+    "must_not_contain": [],
+    "notes": "Live DB: '\"Lou B.\"' → company 'Capitalize Loans'"
+  },
+  {
+    "id": "F038_CO04",
+    "category": "company_lookup",
+    "question": "What company is Arash Allaei associated with?",
+    "must_contain_one_of": [
+      "D1"
+    ],
+    "must_not_contain": [],
+    "notes": "Live DB: 'Arash Allaei' → company 'D1 Training'"
+  },
+  {
+    "id": "F039_CO05",
+    "category": "company_lookup",
+    "question": "What company is Fabian Fernandez Arriaga associated with?",
+    "must_contain_one_of": [
+      "Miami"
+    ],
+    "must_not_contain": [],
+    "notes": "Live DB: 'Fabian Fernandez Arriaga' → company 'Miami Beach fitness franchise'"
+  },
+  {
+    "id": "F040_MTG01",
+    "category": "meeting_date",
+    "question": "When was the most recent meeting with Khaleel Igue?",
+    "must_contain_one_of": [
+      "April",
+      "August",
+      "February",
+      "July",
+      "June",
+      "March",
+      "May",
+      "2026"
+    ],
+    "must_not_contain": [
+      "2023",
+      "2022",
+      "2029",
+      "2030"
+    ],
+    "notes": "Live DB Read.ai ingest: 'Khaleel Igue' on 2026-05-14. Accepts nearby months/year."
+  },
+  {
+    "id": "F041_MTG02",
+    "category": "meeting_date",
+    "question": "When was the most recent meeting with James Bulls?",
+    "must_contain_one_of": [
+      "April",
+      "August",
+      "February",
+      "July",
+      "June",
+      "March",
+      "May",
+      "2026"
+    ],
+    "must_not_contain": [
+      "2023",
+      "2022",
+      "2029",
+      "2030"
+    ],
+    "notes": "Live DB Read.ai ingest: 'James Bulls' on 2026-05-14. Accepts nearby months/year."
+  },
+  {
+    "id": "F042_MTG03",
+    "category": "meeting_date",
+    "question": "When was the most recent meeting with MANUEL F. AYAU AGUILAR?",
+    "must_contain_one_of": [
+      "April",
+      "August",
+      "February",
+      "July",
+      "June",
+      "March",
+      "May",
+      "2026"
+    ],
+    "must_not_contain": [
+      "2023",
+      "2022",
+      "2029",
+      "2030"
+    ],
+    "notes": "Live DB Read.ai ingest: 'MANUEL F. AYAU AGUILAR' on 2026-05-14. Accepts nearby months/year."
+  },
+  {
+    "id": "F043_MTG04",
+    "category": "meeting_date",
+    "question": "When was the most recent meeting with Nathan Smischney?",
+    "must_contain_one_of": [
+      "April",
+      "August",
+      "February",
+      "July",
+      "June",
+      "March",
+      "May",
+      "2026"
+    ],
+    "must_not_contain": [
+      "2023",
+      "2022",
+      "2029",
+      "2030"
+    ],
+    "notes": "Live DB Read.ai ingest: 'Nathan Smischney' on 2026-05-14. Accepts nearby months/year."
+  },
+  {
+    "id": "F044_MTG05",
+    "category": "meeting_date",
+    "question": "When was the most recent meeting with Aubrey Terrazas?",
+    "must_contain_one_of": [
+      "April",
+      "August",
+      "February",
+      "July",
+      "June",
+      "March",
+      "May",
+      "2026"
+    ],
+    "must_not_contain": [
+      "2023",
+      "2022",
+      "2029",
+      "2030"
+    ],
+    "notes": "Live DB Read.ai ingest: 'Aubrey Terrazas' on 2026-05-14. Accepts nearby months/year."
+  },
+  {
+    "id": "F045_CNT01",
+    "category": "stage_count",
+    "question": "How many leads are in 'Successful Call' stage?",
+    "must_contain_one_of": [
+      "20",
+      "21",
+      "22",
+      "23",
+      "24",
+      "25",
+      "26",
+      "27",
+      "28",
+      "29",
+      "30"
+    ],
+    "must_not_contain": [
+      "hundreds",
+      "thousands"
+    ],
+    "notes": "Live DB: stage 'Successful Call' has 25 leads. Accepts ±5."
+  },
+  {
+    "id": "F046_CNT02",
+    "category": "stage_count",
+    "question": "How many leads are in 'NDA Sent' stage?",
+    "must_contain_one_of": [
+      "7",
+      "8",
+      "9",
+      "10",
+      "11",
+      "12",
+      "13",
+      "14",
+      "15",
+      "16",
+      "17"
+    ],
+    "must_not_contain": [
+      "hundreds",
+      "thousands"
+    ],
+    "notes": "Live DB: stage 'NDA Sent' has 12 leads. Accepts ±5."
+  },
+  {
+    "id": "F047_CNT03",
+    "category": "stage_count",
+    "question": "How many leads are in 'Sequence Finished (NEED TO BE ASSIGNED)' stage?",
+    "must_contain_one_of": [
+      "-2",
+      "-1",
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8"
+    ],
+    "must_not_contain": [
+      "hundreds",
+      "thousands"
+    ],
+    "notes": "Live DB: stage 'Sequence Finished (NEED TO BE ASSIGNED)' has 3 leads. Accepts ±5."
+  },
+  {
+    "id": "F048_CNT04",
+    "category": "stage_count",
+    "question": "How many leads are in 'New Leads' stage?",
+    "must_contain_one_of": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "11"
+    ],
+    "must_not_contain": [
+      "hundreds",
+      "thousands"
+    ],
+    "notes": "Live DB: stage 'New Leads' has 6 leads. Accepts ±5."
+  },
+  {
+    "id": "F049_CNT05",
+    "category": "stage_count",
+    "question": "How many leads are in 'NDA Signed (Both ends)' stage?",
+    "must_contain_one_of": [
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "11",
+      "12"
+    ],
+    "must_not_contain": [
+      "hundreds",
+      "thousands"
+    ],
+    "notes": "Live DB: stage 'NDA Signed (Both ends)' has 7 leads. Accepts ±5."
+  },
+  {
+    "id": "F050_NEG01",
+    "category": "empty_set",
+    "question": "Tell me about a contact named Zxqvbg Plotzkin.",
+    "must_contain_one_of": [
+      "No contact",
+      "couldn't find",
+      "not found",
+      "no matches",
+      "no match"
+    ],
+    "must_not_contain": [
+      "Zxqvbg Plotzkin is",
+      "Zxqvbg Plotzkin has",
+      "Zxqvbg Plotzkin is interested"
+    ],
+    "notes": "Synthetic name — must NOT be fabricated."
+  },
+  {
+    "id": "F051_NEG02",
+    "category": "empty_set",
+    "question": "Tell me about a contact named Mxrlnstein Drogbatte.",
+    "must_contain_one_of": [
+      "No contact",
+      "couldn't find",
+      "not found",
+      "no matches",
+      "no match"
+    ],
+    "must_not_contain": [
+      "Mxrlnstein Drogbatte is",
+      "Mxrlnstein Drogbatte has",
+      "Mxrlnstein Drogbatte is interested"
+    ],
+    "notes": "Synthetic name — must NOT be fabricated."
+  },
+  {
+    "id": "F052_NEG03",
+    "category": "empty_set",
+    "question": "Tell me about a contact named Quenndlerp Vossberg.",
+    "must_contain_one_of": [
+      "No contact",
+      "couldn't find",
+      "not found",
+      "no matches",
+      "no match"
+    ],
+    "must_not_contain": [
+      "Quenndlerp Vossberg is",
+      "Quenndlerp Vossberg has",
+      "Quenndlerp Vossberg is interested"
+    ],
+    "notes": "Synthetic name — must NOT be fabricated."
+  },
+  {
+    "id": "F053_NEG04",
+    "category": "empty_set",
+    "question": "Tell me about a contact named Phlogiston Xanthropic.",
+    "must_contain_one_of": [
+      "No contact",
+      "couldn't find",
+      "not found",
+      "no matches",
+      "no match"
+    ],
+    "must_not_contain": [
+      "Phlogiston Xanthropic is",
+      "Phlogiston Xanthropic has",
+      "Phlogiston Xanthropic is interested"
+    ],
+    "notes": "Synthetic name — must NOT be fabricated."
+  },
+  {
+    "id": "F054_NEG05",
+    "category": "empty_set",
+    "question": "Tell me about a contact named Ynphartle Krimblevin.",
+    "must_contain_one_of": [
+      "No contact",
+      "couldn't find",
+      "not found",
+      "no matches",
+      "no match"
+    ],
+    "must_not_contain": [
+      "Ynphartle Krimblevin is",
+      "Ynphartle Krimblevin has",
+      "Ynphartle Krimblevin is interested"
+    ],
+    "notes": "Synthetic name — must NOT be fabricated."
+  }
+]

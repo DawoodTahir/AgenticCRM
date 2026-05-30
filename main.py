@@ -56,6 +56,63 @@ if __name__ == "__main__":
         elif sys.argv[1] == "eval":
             from tests.run_eval import run_eval
             run_eval()
+        elif sys.argv[1] == "faithfulness":
+            from tests.run_faithfulness import run as run_faith
+            run_faith()
+        elif sys.argv[1] == "cost-report":
+            from tests.cost_report import parse_log, group_into_queries, report
+            log_path = sys.argv[2] if len(sys.argv) > 2 else "logs/crm.log"
+            events = parse_log(log_path)
+            queries = group_into_queries(events)
+            report(queries)
+        elif sys.argv[1] == "sync-all":
+            # Render cron entry point — runs every step that doesn't need local token files.
+            # Each step is independent: a failure logs and moves on, never aborts the run.
+            import time
+            t_total = time.time()
+            print("=== SYNC ALL ===", flush=True)
+
+            print("\n[1/4] Monday board → leads + lead_notes", flush=True)
+            try:
+                t0 = time.time()
+                sync_monday_leads()
+                print(f"  OK ({time.time()-t0:.1f}s)", flush=True)
+            except Exception as e:
+                print(f"  FAILED: {e}", flush=True)
+
+            print("\n[2/4] Resolve Monday leads → contacts", flush=True)
+            try:
+                t0 = time.time()
+                conn = get_connection()
+                stats = resolve_monday_contacts(conn)
+                conn.commit()
+                print(f"  OK ({time.time()-t0:.1f}s) — "
+                      f"created={stats['created']} email={stats['email_match']} "
+                      f"phone={stats['phone_match']} name={stats['name_match']} "
+                      f"failed={stats.get('failed', 0)}", flush=True)
+            except Exception as e:
+                print(f"  FAILED: {e}", flush=True)
+            finally:
+                try: conn.close()
+                except Exception: pass
+
+            print("\n[3/4] Monday notes/comments → contact_embeddings", flush=True)
+            try:
+                t0 = time.time()
+                embed_monday_notes()
+                print(f"  OK ({time.time()-t0:.1f}s)", flush=True)
+            except Exception as e:
+                print(f"  FAILED: {e}", flush=True)
+
+            print("\n[4/4] Generate embeddings for pending rows", flush=True)
+            try:
+                t0 = time.time()
+                embed_all_pending()
+                print(f"  OK ({time.time()-t0:.1f}s)", flush=True)
+            except Exception as e:
+                print(f"  FAILED: {e}", flush=True)
+
+            print(f"\n=== SYNC ALL DONE ({time.time()-t_total:.1f}s total) ===", flush=True)
         elif sys.argv[1] == "ask":
             question = " ".join(sys.argv[2:])
             print(ask(question))
